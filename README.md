@@ -22,3 +22,14 @@ Comprehensive checks to verify data completeness, accuracy, and consistency acro
 
 ### 🚨 **Intelligent Alerting System**
 Real-time notifications and alerts when data quality issues, anomalies, or formula inconsistencies are detected, enabling proactive response.
+
+
+## Installation
+
+### Create a python environnement
+### Install the requirements
+pip install -r requirements.txt
+
+### Launch the application 
+There's a certain way to launch the application using some network binding: 
+streamlit run app.py --server.address=0.0.0.0 --server.port=XXXX
