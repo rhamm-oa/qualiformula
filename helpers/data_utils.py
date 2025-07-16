@@ -11,9 +11,9 @@ def load_data(file_path):
         return None
     try:
         if file_path.endswith('.csv'):
-            df = pd.read_csv(file_path, sep=';', encoding='utf-8')
+            df = pd.read_csv(file_path, sep=';', decimal=',')
         elif file_path.endswith(('.xls', '.xlsx')):
-            df = pd.read_excel(file_path, engine='openpyxl')
+            df = pd.read_excel(file_path, engine='openpyxl', decimal=',')
         else:
             st.error("Unsupported file format. Please provide a path to a CSV or Excel file.")
             return None
