@@ -1,2 +1,15 @@
 data
 formulavenv
+*.pyc
+__pycache__
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.log
+*.csv
+*.xlsx
+*.xls
+*.json
+*.xml
+*.html
