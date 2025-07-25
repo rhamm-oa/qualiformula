@@ -17,7 +17,6 @@ Welcome to QualiFormula! This tool is designed for comprehensive data quality as
 """)
 
 # --- 3. Data Loading ---
-# IMPORTANT: Replace this with the actual path to your data file
 file_path = "data/lipsticks/liquid/Liquid_lipstick_database.csv"  # <--- FURNISH YOUR FILE PATH HERE
 
 df = load_data(file_path)
@@ -84,9 +83,22 @@ if df is not None:
                     source = pd.concat([source, sankey_df[sankey_cols[1]].map(label_map)])
                     target = pd.concat([target, sankey_df[sankey_cols[2]].map(label_map)])
                     value = pd.concat([value, value])
-                fig_sankey = go.Figure(data=[go.Sankey(node=dict(pad=15, thickness=20, label=labels), link=dict(source=source, target=target, value=value))])
-                fig_sankey.update_layout(title_text=f"Flow between {', '.join(sankey_cols)}", font_size=10)
-                st.plotly_chart(fig_sankey, use_container_width=True)
+                # Generate a color palette for Sankey nodes
+                import plotly.colors as pc
+                palette = pc.sample_colorscale('Viridis', [i/(len(labels)-1) for i in range(len(labels))]) if len(labels) > 1 else ['#636EFA']
+                node_colors = palette
+                fig_sankey = go.Figure(data=[go.Sankey(
+                    node=dict(pad=15, thickness=20, label=labels, color=node_colors),
+                    link=dict(source=source, target=target, value=value)
+                )])
+                fig_sankey.update_layout(
+                    title_text=f"Flow between {', '.join(sankey_cols)}",
+                    font=dict(size=16, color='black'),
+                    height=1200,
+                    width=1200,
+                    margin=dict(l=0, r=0, t=80, b=0)
+                )
+                st.plotly_chart(fig_sankey, use_container_width=False)
     else:
         st.warning("Not enough categorical columns for a Sankey diagram.")
 
@@ -95,8 +107,39 @@ if df is not None:
     if len(categorical_cols) >= 1:
         sunburst_path = st.multiselect("Select columns for the Sunburst hierarchy:", options=categorical_cols, default=categorical_cols[:2] if len(categorical_cols) >= 2 else categorical_cols[:1])
         if sunburst_path:
-            sunburst_df = df[sunburst_path].dropna()
-            fig_sunburst = px.sunburst(sunburst_df, path=sunburst_path, title="Hierarchical Data Distribution")
-            st.plotly_chart(fig_sunburst, use_container_width=True)
+            sunburst_df = df[sunburst_path].dropna().copy()
+            fig_sunburst = px.sunburst(
+                sunburst_df,
+                path=sunburst_path,
+                title="Hierarchical Data Distribution",
+                color=None,
+                color_discrete_sequence=px.colors.qualitative.Set3,
+                maxdepth=-1 # show all levels
+            )
+            fig_sunburst.update_layout(
+                height=1200,
+                width=1200,
+                font=dict(size=16),
+                margin=dict(l=0, r=0, t=80, b=0),
+                showlegend=False
+            )
+            fig_sunburst.update_traces(
+                textinfo='label+percent entry',
+                insidetextorientation='radial',
+                hovertemplate='<b>%{label}</b><br>Value: %{value}<br>Percent: %{percentParent:.2%}<extra></extra>',
+                marker=dict(line=dict(color='white', width=1))
+            )
+            st.plotly_chart(fig_sunburst, use_container_width=False)
+            # Drilldown table for all paths
+            st.markdown("**Drilldown Table:** You can search for any value below.")
+            # Build a table of all unique paths and their counts
+            path_counts = sunburst_df.value_counts(subset=sunburst_path).reset_index(name='Count')
+            # Add a filter box
+            filter_text = st.text_input("Filter drilldown table (case-insensitive):", "")
+            if filter_text:
+                mask = path_counts.apply(lambda row: filter_text.lower() in ' '.join(row.astype(str)).lower(), axis=1)
+                st.dataframe(path_counts[mask].reset_index(drop=True))
+            else:
+                st.dataframe(path_counts)
 else:
     st.info("Please provide a valid file path in the script to load data.")

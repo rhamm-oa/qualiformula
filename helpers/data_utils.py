@@ -23,23 +23,41 @@ def load_data(file_path):
         return None
 
 def get_column_types(df):
-    """Categorize columns into numeric, text, and mixed types."""
-    numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
-    text_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
-    
-    truly_text = []
+    """Categorize columns into numeric, text, and mixed types based on content."""
+    numeric_cols = []
+    text_cols = []
     mixed_cols = []
-    for col in text_cols:
-        try:
-            pd.to_numeric(df[col], errors='raise')
-            if col not in numeric_cols:
-                 numeric_cols.append(col)
-        except (ValueError, TypeError):
-            is_mixed = df[col].dropna().astype(str).str.contains(r'[A-Za-z]').any() and \
-                       df[col].dropna().astype(str).str.contains(r'[0-9]').any()
-            if is_mixed:
-                mixed_cols.append(col)
-            else:
-                truly_text.append(col)
 
-    return numeric_cols, truly_text, mixed_cols
+    for col in df.columns:
+        # Attempt to convert to numeric silently
+        numeric_series = pd.to_numeric(df[col], errors='coerce')
+        
+        # Check if the column is completely numeric (no NaNs were created from non-numeric strings)
+        if numeric_series.notna().all():
+            numeric_cols.append(col)
+            continue
+
+        # If not completely numeric, check original non-null values
+        original_not_null = df[col].notna()
+        
+        # Check if there are any numbers in the coerced series
+        has_numbers = numeric_series.notna().any()
+        
+        # Check if there were original text values that are now NaN
+        # This identifies values that couldn't be converted
+        has_text = numeric_series.isna()[original_not_null].any()
+
+        if has_numbers and has_text:
+            # The column contains a mix of values that can be numbers and values that are just text
+            mixed_cols.append(col)
+        elif has_text:
+            # The column only contains non-numeric values (like '4U2', 'L'Oreal')
+            text_cols.append(col)
+        elif has_numbers:
+            # This case handles columns with numbers and NaNs, which are considered numeric
+            numeric_cols.append(col)
+        else:
+            # Column is likely all NaNs, treat as text by default
+            text_cols.append(col)
+            
+    return numeric_cols, text_cols, mixed_cols
